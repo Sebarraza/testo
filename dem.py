@@ -45,6 +45,7 @@ class character(entidad):
 
 # el main
 
+print('testeando el breakpoint')
 if __name__ == '__main__':
     pass
 
