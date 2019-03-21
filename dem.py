@@ -35,6 +35,14 @@ class character(entidad):
         self.inv = inv # lista con el inventario del player, tiene un len max de 20
         # los **kwargs son en caso de que haya herencia
 
+    def __str__(self):
+        s = '{0} el {1}'.format(self.name, self.faction) # un string del estilo "nombre el faccion"
+        # ej. "Hitler el Nazi"
+        return s
+
+    def habla(self, msg, **kwargs):
+        raise NotImplementedError
+
 # el main
 
 if __name__ == '__main__':
