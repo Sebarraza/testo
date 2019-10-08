@@ -5,12 +5,14 @@ import parametros as PARA
 #-----------------------------------------------------------------------------
 # CONJUNTOS
 
-productores, centros, medicamentos, med_por_prod, cam_por_prod,\
-cam_CENABAST, dias = PARA.Conjuntos()
+productores, centros, medicamentos, cam_por_prod, cam_CENABAST,\
+dias = PARA.Conjuntos()
 
 #-----------------------------------------------------------------------------
 # PARAMETROS
 
+params = PARA.Parametros(productores= productores, centros= centros,
+medicamentos= medicamentos, dias= dias)
 
 #-----------------------------------------------------------------------------
 # VARIABLES

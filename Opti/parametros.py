@@ -6,7 +6,7 @@ from random import choice, randint
 
 def carga_datos(nombre = ''):
     temp = []
-    with open(nombre) as archivo:
+    with open(nombre, mode= 'r') as archivo:
         for line in archivo:
             l = line.strip('\n')
             if l == '':
@@ -44,16 +44,6 @@ def Conjuntos():
     medicamentos = []
     for x in range(1, CONJ['n medicamentos']+1):
         medicamentos.append(f'medicamento{x}')
-    # Medicamentos por productor, queda a mi criterio
-    # Con repeticion y cada productor una cantidad aleatoria dada por parametros.py
-    # DICCIONARIO -> PRODUCTOR(str) : MEDICAMENTOS(set)
-    med_por_prod = {}
-    for prod in productores:
-        n = randint(*CONJ['rango medic prod'])
-        temp = set()
-        while len(temp) <= n:
-            temp.add(choice(medicamentos))
-        med_por_prod[prod] = temp
     # Camiones disponibles por productor p
     # Tiene una cantidad aleatoria de camiones dada por parametros.py
     # DICCIONARIO -> PRODUCTOR(str) : CAMION(str)
@@ -78,7 +68,6 @@ def Conjuntos():
         productores,
         centros,
         medicamentos,
-        med_por_prod,
         cam_por_prod,
         cam_CENABAST,
         dias
@@ -92,11 +81,6 @@ def Parametros(productores = [], medicamentos = [], centros = [], dias= []):
         'rango dur med': (14, 21),
         'rango costo fijo camion': (5, 15),
         'rango costo var medic a bodega': (2, 6),
-        'rango costo bodega a centro': (5, 15),
-        'rango tiempo bodega a centro': (30, 60),
-        'rango vol almacenamiento centro': (30, 45),
-        'rango tiempo entre centros': (20, 80),
-        'rango costo entre centros': (7, 11),
         'capacidad camion': 15,
         'capacidad camion CENABAST': 20,
         'tiempo de trabajo del camion': 300,
@@ -149,30 +133,46 @@ def Parametros(productores = [], medicamentos = [], centros = [], dias= []):
         elif tipo == 'tiempo':
             if origen == 'bodega':
                 for centro, tiempo in zip(centros, valores):
+                    if ',' in tiempo:
+                        u,d = tiempo.split(',')
+                        tiempo= '.'.join((u,d))
                     tiempo_tran_bod_centro[centro] = float(tiempo)
             elif 'centro' in origen:
                 tiempo_entre_centros[origen] = {}
                 for centro, tiempo in zip(centros, valores):
+                    if ',' in tiempo:
+                        u,d = tiempo.split(',')
+                        tiempo= '.'.join((u,d))
                     if centro == origen:
                         continue
                     tiempo_entre_centros[origen][centro] = float(tiempo)
         elif tipo == 'costo':
             if origen == 'bodega':
                 for centro, costo in zip(centros, valores):
+                    if ',' in costo:
+                        u,d = costo.split(',')
+                        costo= '.'.join((u,d))
                     costo_tran_bod_centro[centro] = int(costo)
             elif 'centro' in origen:
                 costo_entre_centros[origen] = {}
                 for centro, costo in zip(centros, valores):
+                    if ',' in costo:
+                        u,d = costo.split(',')
+                        costo= '.'.join((u,d))
                     if centro == origen:
                         continue
                     costo_entre_centros[origen][centro] = int(costo)
         elif tipo == 'volumen':
             for centro, vol in zip(centros, valores):
+                if ',' in vol:
+                    u,d = vol.split(',')
+                    vol= '.'.join((u,d))
                 vol_almacen_centro[centro] = int(vol)
 
     # Demanda:
     # Este es muy denso como para hacerlo asi, probablemente va a tener que hacerse
     # un archivo a lo txt o csv con estos datos
+    # SPOILER: el csv que me pasaron era exactamente esto, asique lo dejo asi
     demanda = {}
     for c in centros:
         demanda[c] = {}
@@ -182,9 +182,23 @@ def Parametros(productores = [], medicamentos = [], centros = [], dias= []):
                 temp = randint(100,200)
                 demanda[c][m][d] = temp
 
-    return (
-
-    )
+    return {
+        'demandas': demanda,
+        'costo tran bod centro': costo_tran_bod_centro,
+        'tiempo tran bod centro': tiempo_tran_bod_centro,
+        'vol almacen centro': vol_almacen_centro,
+        'tiempo entre centros': tiempo_entre_centros,
+        'costo entre centros': costo_entre_centros,
+        'vol camion': vol_camion,
+        'vol camion CENABAST': vol_camion_CENABAST,
+        'horario camion': horario_camion,
+        'costo bodega': costo_bodega,
+        'vol bodega': vol_bodega,
+        'vol med': vol_med,
+        'dur med': dur_med,
+        'costo tran medic bodega': costo_trans_medic_bodega,
+        'costo fijo camion': costo_fijo_camion
+    }
 
 if __name__ == "__main__":
     print('se ejecuta el main')
