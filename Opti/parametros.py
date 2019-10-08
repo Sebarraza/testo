@@ -16,28 +16,6 @@ def carga_datos(nombre = ''):
     return temp
 
 
-PARAS = {
-    'rango vol med': (2, 4),
-    'rango dur med': (14, 21),
-    'rango costo fijo camion': (5, 15),
-    'rango costo var medic a bodega': (2, 6),
-    'rango costo bodega a centro': (5, 15),
-    'rango tiempo bodega a centro': (30, 60),
-    'rango vol almacenamiento centro': (30, 45),
-    'rango tiempo entre centros': (20, 80),
-    'rango costo entre centros': (7, 11),
-    'capacidad camion': 15,
-    'capacidad camion CENABAST': 20,
-    'tiempo de trabajo del camion': 300,
-    'costo arriendo bodega': 20,
-    'vol por bodega': 30,
-    'M GRANDE': 100200300400
-}
-
-DEMANDAS = {
-    'rango temporal': (0,20)
-}
-
 def Conjuntos():
     # Tamanos primero
     CONJ = {
@@ -109,6 +87,25 @@ def Conjuntos():
 # PARAMETROS
 
 def Parametros(productores = [], medicamentos = [], centros = [], dias= []):
+    PARAS = {
+        'rango vol med': (2, 4),
+        'rango dur med': (14, 21),
+        'rango costo fijo camion': (5, 15),
+        'rango costo var medic a bodega': (2, 6),
+        'rango costo bodega a centro': (5, 15),
+        'rango tiempo bodega a centro': (30, 60),
+        'rango vol almacenamiento centro': (30, 45),
+        'rango tiempo entre centros': (20, 80),
+        'rango costo entre centros': (7, 11),
+        'capacidad camion': 15,
+        'capacidad camion CENABAST': 20,
+        'tiempo de trabajo del camion': 300,
+        'costo arriendo bodega': 20,
+        'vol por bodega': 30,
+        'M GRANDE': 100200300400
+    }
+
+
     # Directos desde paramteros.py
     vol_camion = PARAS['capacidad camion']
     vol_camion_CENABAST = PARAS['capacidad camion CENABAST']
@@ -144,25 +141,35 @@ def Parametros(productores = [], medicamentos = [], centros = [], dias= []):
     # Inter centros
     tiempo_entre_centros = {}
     costo_entre_centros = {}
-    for a in centros:
-        # Bodega a centro
-        n = randint(*PARAS['rango costo bodega a centro'])
-        costo_tran_bod_centro[a] = n
-        t = randint(*PARAS['rango tiempo bodega a centro'])
-        tiempo_tran_bod_centro[a] = t
-        v = randint(*PARAS['rango vol almacenamiento centro'])
-        vol_almacen_centro[a] = v
-        # Inter centros
-        tiempo_entre_centros[a] = {}
-        costo_entre_centros[a] = {}
-        for b in centros:
-            if a == b:
-                continue
-            else:
-                t = randint(*PARAS['rango tiempo entre centros'])
-                c = randint(*PARAS['rango costo entre centros'])
-                tiempo_entre_centros[a][b] = t
-                costo_entre_centros[a][b] = t
+    arreglo = carga_datos('tiempo y costo por centro.csv')
+    for fila in arreglo:
+        tipo, origen, valores = (fila[0], fila[1], tuple(fila[2:]))
+        if tipo == 'tipo':
+            continue
+        elif tipo == 'tiempo':
+            if origen == 'bodega':
+                for centro, tiempo in zip(centros, valores):
+                    tiempo_tran_bod_centro[centro] = float(tiempo)
+            elif 'centro' in origen:
+                tiempo_entre_centros[origen] = {}
+                for centro, tiempo in zip(centros, valores):
+                    if centro == origen:
+                        continue
+                    tiempo_entre_centros[origen][centro] = float(tiempo)
+        elif tipo == 'costo':
+            if origen == 'bodega':
+                for centro, costo in zip(centros, valores):
+                    costo_tran_bod_centro[centro] = int(costo)
+            elif 'centro' in origen:
+                costo_entre_centros[origen] = {}
+                for centro, costo in zip(centros, valores):
+                    if centro == origen:
+                        continue
+                    costo_entre_centros[origen][centro] = int(costo)
+        elif tipo == 'volumen':
+            for centro, vol in zip(centros, valores):
+                vol_almacen_centro[centro] = int(vol)
+
     # Demanda:
     # Este es muy denso como para hacerlo asi, probablemente va a tener que hacerse
     # un archivo a lo txt o csv con estos datos
@@ -172,7 +179,7 @@ def Parametros(productores = [], medicamentos = [], centros = [], dias= []):
         for m in medicamentos:
             demanda[c][m] = {}
             for d in dias:
-                temp = randint(*DEMANDAS['rango temporal'])
+                temp = randint(100,200)
                 demanda[c][m][d] = temp
 
     return (
