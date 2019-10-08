@@ -1,5 +1,5 @@
 '''
-Parametros para el modelo
+Conjuntos y parametros para el modelo
 '''
 
 from random import choice, randint
@@ -77,46 +77,52 @@ def Conjuntos():
 
 def Parametros(productores = [], medicamentos = [], centros = [], dias= []):
     PARAS = {
-        'rango vol med': (2, 4),
-        'rango dur med': (14, 21),
-        'rango costo fijo camion': (5, 15),
-        'rango costo var medic a bodega': (2, 6),
-        'capacidad camion': 15,
-        'capacidad camion CENABAST': 20,
-        'tiempo de trabajo del camion': 300,
-        'costo arriendo bodega': 20,
-        'vol por bodega': 30,
-        'M GRANDE': 100200300400
+        'capacidad camion': 15
     }
-
 
     # Directos desde paramteros.py
     vol_camion = PARAS['capacidad camion']
-    vol_camion_CENABAST = PARAS['capacidad camion CENABAST']
-    horario_camion = PARAS['tiempo de trabajo del camion']
-    costo_bodega = PARAS['costo arriendo bodega']
-    vol_bodega = PARAS['vol por bodega']
+
+    arreglo = carga_datos('constantes.csv')
+    for fila in arreglo:
+        nombre, valor = (fila[0], fila[2])
+        if nombre == 'Nombre':
+            continue
+        elif nombre == 'capacidad camion CENABAST':
+            vol_camion_CENABAST = int(valor)
+        elif nombre == 'costo arriendo bodega':
+            costo_bodega = int(valor)
+        elif nombre == 'vol por bodega':
+            vol_bodega = int(valor)
+        elif nombre == 'tiempo de trabajo del camion':
+            horario_camion = int(valor)
 
     # Volumen y duracion del medicamento
     vol_med = {}
     dur_med = {}
-    # Costo fijo y var del camion por productor
+    # Costo var del camion por productor
     costo_trans_medic_bodega = {}
-    costo_fijo_camion = {}
-    for m in medicamentos:
-        # Volumen y duracion del medicamento
-        vol = randint(*PARAS['rango vol med'])
-        vol_med[m] = vol
-        dur = randint(*PARAS['rango dur med'])
-        dur_med[m] = dur
-        # Costo fijo y variable de camiones del productor
-        costo_trans_medic_bodega[m] = {}
-        for p in productores:
-            c_trans = randint(*PARAS['rango costo var medic a bodega'])
-            costo_trans_medic_bodega[m][p] = c_trans
-            if m == medicamentos[0]: # Costo fijo solo se define una vez
-                c_fijo = randint(*PARAS['rango costo fijo camion'])
-                costo_fijo_camion[p] = c_fijo
+    arreglo = carga_datos('medicamentos.csv')
+    for fila in arreglo:
+        nombre, valores = (fila[0], fila[1:])
+        if nombre == 'Nombre':
+            continue
+        elif nombre == 'volumen':
+            for med, vol in zip(medicamentos, valores):
+                if ',' in vol:
+                    u,d = vol.split(',')
+                    vol = '.'.join((u,d))
+                vol_med[med] = float(vol)
+        elif nombre == 'duracion':
+            for med, tiempo in zip(medicamentos, valores):
+                dur_med[med] = tiempo
+        elif 'productor' in nombre:
+            costo_trans_medic_bodega[nombre] = {}
+            for med, costo in zip(medicamentos, valores):
+                if costo == '':
+                    costo_trans_medic_bodega[nombre][med] = None
+                else:
+                    costo_trans_medic_bodega[nombre][med] = int(costo)
 
     # Bodega a centro
     costo_tran_bod_centro = {}
@@ -197,7 +203,7 @@ def Parametros(productores = [], medicamentos = [], centros = [], dias= []):
         'vol med': vol_med,
         'dur med': dur_med,
         'costo tran medic bodega': costo_trans_medic_bodega,
-        'costo fijo camion': costo_fijo_camion
+        'M GRANDE': 100200300400
     }
 
 if __name__ == "__main__":
