@@ -5,92 +5,56 @@ import parametros as PARA
 #-----------------------------------------------------------------------------
 # CONJUNTOS
 
-# Productores, cantidad dada por parametros.py
-# LISTA DE STRINGS
-productores = []
-for x in range(1, PARA.CONJ['n prod']+1):
-    productores.append(f'productor{x}')
-# Centros, cantidad dada por parametros.py
-# LISTA DE STRINGS
-centros = []
-for x in range(1, PARA.CONJ['n centros']+1):
-    centros.append(f'centro{x}')
-# Medicamentos, cantidad dada por parametros.py
-# LISTA DE STRINGS
-medicamentos = []
-for x in range(1, PARA.CONJ['n medicamentos']+1):
-    medicamentos.append(f'medicamento{x}')
-# Medicamentos por productor, queda a mi criterio
-# Con repeticion y cada productor una cantidad aleatoria dada por parametros.py
-# DICCIONARIO -> PRODUCTOR(str) : MEDICAMENTOS(set)
-med_por_prod = {}
-for prod in productores:
-    n = randint(*PARA.CONJ['rango medic prod'])
-    temp = set()
-    while len(temp) <= n:
-        temp.add(choice(medicamentos))
-    med_por_prod[prod] = temp
-# Camiones disponibles por productor p
-# Tiene una cantidad aleatoria de camiones dada por parametros.py
-# DICCIONARIO -> PRODUCTOR(str) : CAMION(str)
-cam_por_prod = {}
-for prod in productores:
-    n = randint(*PARA.CONJ['rango cam prod'])
-    temp = []
-    for x in range(1,n+1):
-        temp.append(f'camion_{x}_{prod}')
-    cam_por_prod[prod] = temp
-# Camiones disponibles para CENABAST
-# Tiene una cantidad aleatoria dada por parametros.py
-cam_CENABAST = []
-n = randint(*PARA.CONJ['rango cam CENABAST'])
-for x in range(1, n+1):
-    cam_CENABAST.append(f'camion_{x}_CENABAST')
-# Dias a planificar
-dias = []
-for x in range(1, PARA.CONJ['n dias']+1):
-    dias.append(f'dia{x}')
+productores, centros, medicamentos, med_por_prod, cam_por_prod,\
+cam_CENABAST, dias = PARA.Conjuntos()
+
 #-----------------------------------------------------------------------------
 # PARAMETROS
+
+# Directos desde paramteros.py
+vol_camion = PARA.PARAS['capacidad camion']
+vol_camion_CENABAST = PARA.PARAS['capacidad camion CENABAST']
+horario_camion = PARA.PARAS['tiempo de trabajo del camion']
+costo_bodega = PARA.PARAS['costo arriendo bodega']
+vol_bodega = PARA.PARAS['vol por bodega']
 
 # Volumen y duracion del medicamento
 vol_med = {}
 dur_med = {}
-for med in medicamentos:
-    n = randint(*PARA.PARAS['rango vol med'])
-    vol_med[med] = n
-    m = randint(*PARA.PARAS['rango dur med'])
-    dur_med[med] = m
-# costo fijo y capacidad de camion del productor
-# mas costo variable por transporte del medicamento
+# Costo fijo y var del camion por productor
 costo_trans_medic_bodega = {}
 costo_fijo_camion = {}
-vol_camion = PARA.PARAS['capacidad camion']
-vol_camion_CENABAST = PARA.PARAS['capacidad camion CENABAST']
-horario_camion = PARA.PARAS['tiempo de trabajo del camion']
-for prod in productores:
-    c_fijo = randint(*PARA.PARAS['rango costo fijo camion'])
-    costo_trans_medic_bodega[prod] = {}
-    for med in medicamentos:
+for m in medicamentos:
+    # Volumen y duracion del medicamento
+    vol = randint(*PARA.PARAS['rango vol med'])
+    vol_med[m] = vol
+    dur = randint(*PARA.PARAS['rango dur med'])
+    dur_med[m] = dur
+    # Costo fijo y variable de camiones del productor
+    costo_trans_medic_bodega[m] = {}
+    for p in productores:
         c_trans = randint(*PARA.PARAS['rango costo var medic a bodega'])
-        costo_trans_medic_bodega[prod][med] = c_trans
-    costo_fijo_camion[prod] = c_fijo
-costo_bodega = PARA.PARAS['costo arriendo bodega']
-vol_bodega = PARA.PARAS['vol por bodega']
+        costo_trans_medic_bodega[m][p] = c_trans
+        if m == medicamentos[0]: # Costo fijo solo se define una vez
+            c_fijo = randint(*PARA.PARAS['rango costo fijo camion'])
+            costo_fijo_camion[p] = c_fijo
+
+# Bodega a centro
 costo_tran_bod_centro = {}
 tiempo_tran_bod_centro = {}
 vol_almacen_centro = {}
-for centro in centros:
-    n = randint(*PARA.PARAS['rango costo bodega a centro'])
-    costo_tran_bod_centro[centro] = n
-    t = randint(*PARA.PARAS['rango tiempo bodega a centro'])
-    tiempo_tran_bod_centro[centro] = t
-    v = randint(*PARA.PARAS['rango vol almacenamiento centro'])
-    vol_almacen_centro[centro] = v
 # Inter centros
 tiempo_entre_centros = {}
 costo_entre_centros = {}
 for a in centros:
+    # Bodega a centro
+    n = randint(*PARA.PARAS['rango costo bodega a centro'])
+    costo_tran_bod_centro[a] = n
+    t = randint(*PARA.PARAS['rango tiempo bodega a centro'])
+    tiempo_tran_bod_centro[a] = t
+    v = randint(*PARA.PARAS['rango vol almacenamiento centro'])
+    vol_almacen_centro[a] = v
+    # Inter centros
     tiempo_entre_centros[a] = {}
     costo_entre_centros[a] = {}
     for b in centros:
@@ -112,6 +76,7 @@ for c in centros:
         for d in dias:
             temp = randint(*PARA.DEMANDAS['rango temporal'])
             demanda[c][m][d] = temp
+
 
 #-----------------------------------------------------------------------------
 # VARIABLES
@@ -138,13 +103,13 @@ for p in productores:
             cam_a_bodega[p][c][d] = model.addVar(vtype= GRB.BINARY, name=f'a_bodega_{p}_{c}_{d}')
 # Z: Unidades vencidas del medicamento m el dia d
 # W: Unidades almacenadas de med m en bodega el dia d
-vencidos = {}
+vencidos = {} # DELETE
 almacen_bodega = {}
 for m in medicamentos:
-    vencidos[m] = {}
+    vencidos[m] = {} # DELETE
     almacen_bodega[m] = {}
     for d in dias:
-        vencidos[m][d] = model.addVar(vtype= GRB.CONTINUOUS, name=f'vencidos_{m}_{d}')
+        vencidos[m][d] = model.addVar(vtype= GRB.CONTINUOUS, name=f'vencidos_{m}_{d}') # DELETE
         almacen_bodega[m][d] = model.addVar(vtype= GRB.CONTINUOUS, name=f'almacen_bodega_{m}_{d}')
 # Beta: N Bodegas a arrendar
 arrienda = model.addVar(vtype= GRB.CONTINUOUS, name='bodegas a arrendar')
@@ -222,5 +187,7 @@ for m in medicamentos:
 #-----------------------------------------------------------------------------
 # Funcion Objetivo
 model.update()
+
+
 
 print('GG')
