@@ -76,13 +76,6 @@ def Conjuntos():
 # PARAMETROS
 
 def Parametros(productores = [], medicamentos = [], centros = [], dias= []):
-    PARAS = {
-        'capacidad camion': 15
-    }
-
-    # Directos desde paramteros.py
-    vol_camion = PARAS['capacidad camion']
-
     arreglo = carga_datos('constantes.csv')
     for fila in arreglo:
         nombre, valor = (fila[0], fila[2])
@@ -150,7 +143,7 @@ def Parametros(productores = [], medicamentos = [], centros = [], dias= []):
                         u,d = tiempo.split(',')
                         tiempo= '.'.join((u,d))
                     if centro == origen:
-                        continue
+                        tiempo = '0'
                     tiempo_entre_centros[origen][centro] = float(tiempo)
         elif tipo == 'costo':
             if origen == 'bodega':
@@ -166,7 +159,7 @@ def Parametros(productores = [], medicamentos = [], centros = [], dias= []):
                         u,d = costo.split(',')
                         costo= '.'.join((u,d))
                     if centro == origen:
-                        continue
+                        costo = '0'
                     costo_entre_centros[origen][centro] = int(costo)
         elif tipo == 'volumen':
             for centro, vol in zip(centros, valores):
@@ -188,6 +181,30 @@ def Parametros(productores = [], medicamentos = [], centros = [], dias= []):
                 temp = randint(100,200)
                 demanda[c][m][d] = temp
 
+    costo_fijo_cam = {}
+    vol_cam = {}
+    arreglo = carga_datos('vol y costo fijo por prod.csv')
+    for fila in arreglo:
+        nombre, valores = (fila[0], fila[2:])
+        if nombre == 'Nombre':
+            continue
+        elif nombre == 'vol camion':
+            for p, vol in zip(productores, valores):
+                vol_cam[p] = int(vol)
+        elif nombre == 'costo fijo':
+            for p, costo in zip(productores, valores):
+                costo_fijo_cam[p] = int(costo)
+
+    med_prod = {}
+    for p in productores:
+        medics = costo_trans_medic_bodega[p]
+        med_prod[p] = []
+        for m in medicamentos:
+            if medics[m] == None:
+                continue
+            else:
+                med_prod[p].append(m)
+
     return {
         'demandas': demanda,
         'costo tran bod centro': costo_tran_bod_centro,
@@ -195,7 +212,7 @@ def Parametros(productores = [], medicamentos = [], centros = [], dias= []):
         'vol almacen centro': vol_almacen_centro,
         'tiempo entre centros': tiempo_entre_centros,
         'costo entre centros': costo_entre_centros,
-        'vol camion': vol_camion,
+        'vol camion': vol_cam,
         'vol camion CENABAST': vol_camion_CENABAST,
         'horario camion': horario_camion,
         'costo bodega': costo_bodega,
@@ -203,8 +220,9 @@ def Parametros(productores = [], medicamentos = [], centros = [], dias= []):
         'vol med': vol_med,
         'dur med': dur_med,
         'costo tran medic bodega': costo_trans_medic_bodega,
-        'M GRANDE': 100200300400
-    }
+        'costo fijo camion': costo_fijo_cam,
+        'M GRANDE': 100200300400,
+    }, med_prod
 
 if __name__ == "__main__":
     print('se ejecuta el main')

@@ -11,7 +11,7 @@ dias = PARA.Conjuntos()
 #-----------------------------------------------------------------------------
 # PARAMETROS
 
-params = PARA.Parametros(productores= productores, centros= centros,
+params, med_prod = PARA.Parametros(productores= productores, centros= centros,
 medicamentos= medicamentos, dias= dias)
 
 #-----------------------------------------------------------------------------
@@ -49,14 +49,7 @@ for m in medicamentos:
         almacen_bodega[m][d] = model.addVar(vtype= GRB.CONTINUOUS, name=f'almacen_bodega_{m}_{d}')
 # Beta: N Bodegas a arrendar
 arrienda = model.addVar(vtype= GRB.CONTINUOUS, name='bodegas a arrendar')
-# u: camion va desde bodega al centro b el dia d
-bodega_a_centro = {}
-for c in cam_CENABAST:
-    bodega_a_centro[c] = {}
-    for b in centros:
-        bodega_a_centro[c][b] = {}
-        for d in dias:
-            bodega_a_centro[c][b][d] = model.addVar(vtype= GRB.BINARY, name=f'bodega_a_{b}_{c}_{d}')
+
 # r: med transportado de bodega al centro b el dia d
 med_bodega_centro = {}
 for m in medicamentos:
@@ -82,8 +75,6 @@ for c in cam_CENABAST:
     for a in centros:
         entre_centro[c][a] = {}
         for b in centros:
-            if a == b:
-                continue
             entre_centro[c][a][b] = {}
             for d in dias:
                 entre_centro[c][a][b][d] = model.addVar(vtype= GRB.BINARY, name=f'cam_{c}_{a}_{b}_{d}')
@@ -96,11 +87,17 @@ for m in medicamentos:
         for a in centros:
             trans_entre_centro[m][c][a] = {}
             for b in centros:
-                if a == b:
-                    continue
                 trans_entre_centro[m][c][a][b] = {}
                 for d in dias:
                     trans_entre_centro[m][c][a][b][d] = model.addVar(vtype= GRB.CONTINUOUS, name=f'trans_centro_{m}_{c}_{a}_{b}_{d}')
+# u: camion va desde bodega al centro b el dia d
+bodega_a_centro = {}
+for c in cam_CENABAST:
+    bodega_a_centro[c] = {}
+    for b in centros:
+        bodega_a_centro[c][b] = {}
+        for d in dias:
+            bodega_a_centro[c][b][d] = model.addVar(vtype= GRB.BINARY, name=f'bodega_a_{b}_{c}_{d}')
 # f: camion va desde centro b a bodegas el dia d
 centro_a_bodegas = {}
 for c in cam_CENABAST:
@@ -124,6 +121,37 @@ for m in medicamentos:
 # Funcion Objetivo
 model.update()
 
+obj1 = quicksum(quicksum(quicksum((cam_a_bodega[p][c][d] * params['costo fijo camion'][p]) +\
+    quicksum(med_trans_prod[m][p][c][d] * params['costo tran medic bodega'][p][m] for m in med_prod[p]) \
+    for c in cam_por_prod[p]) for p in productores) for d in dias)
+
+obj2 = arrienda
+
+obj3 = quicksum(quicksum(quicksum( (centro_a_bodegas[c][b][d] + bodega_a_centro[c][b][d])\
+* params['costo tran bod centro'][b] + quicksum(entre_centro[c][b][a][d] * params['costo entre centros'][b][a]\
+ for a in centros)  for b in centros) for c in cam_CENABAST) for d in dias)
+
+model.setObjective(obj1 + obj2 + obj3)
+
+#-----------------------------------------------------------------------------
+# Restricciones
+
+# Restr 1 y 2
+for d in dias:
+    for p in productores:
+        for c in cam_por_prod[p]:
+            # restr 1
+            model.addConstr(
+                quicksum(med_trans_prod[m][p][c][d] for m in med_prod[p])
+                <= cam_a_bodega[p][c][d], f'restr1_{c}_{p}_{d}'
+                )
+            # restr 2
+            model.addConstr(
+                quicksum(med_trans_prod[m][p][c][d] for m in med_prod[p])
+                * params['vol med'][m] <= params['vol camion'][p], f'restr2_{c}_{p}_{d}'
+            )
+
+# restr 3
 
 
 print('GG')
