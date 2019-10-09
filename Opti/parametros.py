@@ -108,7 +108,7 @@ def Parametros(productores = [], medicamentos = [], centros = [], dias= []):
                 vol_med[med] = float(vol)
         elif nombre == 'duracion':
             for med, tiempo in zip(medicamentos, valores):
-                dur_med[med] = tiempo
+                dur_med[med] = int(tiempo)
         elif 'productor' in nombre:
             costo_trans_medic_bodega[nombre] = {}
             for med, costo in zip(medicamentos, valores):
@@ -173,13 +173,13 @@ def Parametros(productores = [], medicamentos = [], centros = [], dias= []):
     # un archivo a lo txt o csv con estos datos
     # SPOILER: el csv que me pasaron era exactamente esto, asique lo dejo asi
     demanda = {}
-    for c in centros:
-        demanda[c] = {}
+    for b in centros:
+        demanda[b] = {}
         for m in medicamentos:
-            demanda[c][m] = {}
+            demanda[b][m] = {}
             for d in dias:
                 temp = randint(100,200)
-                demanda[c][m][d] = temp
+                demanda[b][m][d] = temp
 
     costo_fijo_cam = {}
     vol_cam = {}
@@ -205,6 +205,18 @@ def Parametros(productores = [], medicamentos = [], centros = [], dias= []):
             else:
                 med_prod[p].append(m)
 
+    inicial_bodega = {}
+    inicial_centro = {}
+    for m in medicamentos:
+        inicial_bodega[m] = randint(50, 100)
+        inicial_centro[m] = {}
+        for b in centros:
+            inicial_centro[m][b] = 400
+
+    dias_no_prod = {}
+    for p in productores:
+        dias_no_prod[p] = randint(2,4)
+
     return {
         'demandas': demanda,
         'costo tran bod centro': costo_tran_bod_centro,
@@ -222,6 +234,9 @@ def Parametros(productores = [], medicamentos = [], centros = [], dias= []):
         'costo tran medic bodega': costo_trans_medic_bodega,
         'costo fijo camion': costo_fijo_cam,
         'M GRANDE': 100200300400,
+        'inicial centro': inicial_centro,
+        'inicial bodega': inicial_bodega,
+        'prod cd': dias_no_prod
     }, med_prod
 
 if __name__ == "__main__":

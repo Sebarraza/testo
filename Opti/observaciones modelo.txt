@@ -1,0 +1,27 @@
+Funcion Objetivo:
+    Ultima triple suma se usa Cp cuando deberia ser Cb
+
+Restricciones:
+3: En las ultimas 2 doble suma se usa Cp cuando deberia ser Cb
+4: Se usa Mp cuando deberia ser M
+6: No se multiplica la cantidad de medicamento por su volumen
+9: Faltan los "para todo", ¿b (usualmente centro) pertenece a Cb (camiones)?
+
+13: No multiplica cantidad de medicamento por volumen del medicamento
+17: Falta el " <= horas trabajo max camion "
+
+19: Aqui hay un GRAN problema (no es problema de escritura)
+                              (es problema de modelacion)
+    Esta restriccion nos fuerza a tomar un almacen inicial en todos los centros
+    minimo igual a la demanda del medicamento en ese centro
+    Tenemos que asegurar que el inventario inicial en los centros es mas grande
+    que la demanda o el problema se vuelve infactible, porque una restriccion
+    seria como 40 >= 200 y eso jamas se cumple
+    Tambien hay un problema de escritura: falta la condicion de borde para el 
+    primer dia en q^{d-1}_{bm}
+    Inlcuso mas grande, porque el problema permite la existencia de escases de 
+    medicamentos, mientras que esta restriccion asume que es imposible (posible contradiccion)
+
+21: Se usan var y param con m sin tener un para todo m
+    Hay para todo p en P y no se usa, talvez era para todo b en C porque ese si se usa?
+22: Se usa Cd en vez de Cp
