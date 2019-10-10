@@ -178,7 +178,7 @@ def Parametros(productores = [], medicamentos = [], centros = [], dias= []):
         for m in medicamentos:
             demanda[b][m] = {}
             for d in dias:
-                temp = randint(100,200)
+                temp = randint(50,100)
                 demanda[b][m][d] = temp
 
     costo_fijo_cam = {}
@@ -211,11 +211,11 @@ def Parametros(productores = [], medicamentos = [], centros = [], dias= []):
         inicial_bodega[m] = randint(50, 100)
         inicial_centro[m] = {}
         for b in centros:
-            inicial_centro[m][b] = 400
+            inicial_centro[m][b] = 1000
 
     dias_no_prod = {}
     for p in productores:
-        dias_no_prod[p] = randint(2,4)
+        dias_no_prod[p] = 1
 
     return {
         'demandas': demanda,

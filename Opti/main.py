@@ -39,13 +39,13 @@ for p in productores:
             cam_a_bodega[p][c][d] = model.addVar(vtype= GRB.BINARY, name=f'a_bodega_{p}_{c}_{d}')
 # Z: Unidades vencidas del medicamento m el dia d
 # W: Unidades almacenadas de med m en bodega el dia d
-vencidos = {} # DELETE
+#vencidos = {} # DELETE
 almacen_bodega = {}
 for m in medicamentos:
-    vencidos[m] = {} # DELETE
+    #vencidos[m] = {} # DELETE
     almacen_bodega[m] = {}
     for d in dias:
-        vencidos[m][d] = model.addVar(vtype= GRB.CONTINUOUS, name=f'vencidos_{m}_{d}') # DELETE
+        #vencidos[m][d] = model.addVar(vtype= GRB.CONTINUOUS, name=f'vencidos_{m}_{d}') # DELETE
         almacen_bodega[m][d] = model.addVar(vtype= GRB.CONTINUOUS, name=f'almacen_bodega_{m}_{d}')
 # Beta: N Bodegas a arrendar
 arrienda = model.addVar(vtype= GRB.CONTINUOUS, name='bodegas a arrendar')
@@ -59,7 +59,7 @@ for m in medicamentos:
         for b in centros:
             med_bodega_centro[m][c][b] = {}
             for d in dias:
-                med_bodega_centro[m][c][b][d] = model.addVar(vtype= GRB.CONTINUOUS, name=f'med_{m}_{c}_{b}_{d}')
+                med_bodega_centro[m][c][b][d] = model.addVar(vtype= GRB.CONTINUOUS, name=f'med_{m}_{b}_{c}_{d}')
 # q: unidades de med almacenadas en centro b el dia d
 almacen_centro = {}
 for m in medicamentos:
@@ -68,16 +68,16 @@ for m in medicamentos:
         almacen_centro[m][b] = {}
         for d in dias:
             almacen_centro[m][b][d] = model.addVar(vtype= GRB.CONTINUOUS, name=f'almacen_centro_{b}_{m}_{d}')
-# p: camion c va del centro a al b el dia d
+# p: camion c va del centro b al a el dia d
 entre_centro = {}
 for c in cam_CENABAST:
     entre_centro[c] = {}
-    for a in centros:
-        entre_centro[c][a] = {}
-        for b in centros:
-            entre_centro[c][a][b] = {}
+    for b in centros:
+        entre_centro[c][b] = {}
+        for a in centros:
+            entre_centro[c][b][a] = {}
             for d in dias:
-                entre_centro[c][a][b][d] = model.addVar(vtype= GRB.BINARY, name=f'cam_{c}_{a}_{b}_{d}')
+                entre_centro[c][b][a][d] = model.addVar(vtype= GRB.BINARY, name=f'cam_{c}_{b}_{a}_{d}')
 # o: unidades de med transportadas por el camion del centro a al centro b el dia d
 trans_entre_centro = {}
 for m in medicamentos:
@@ -334,14 +334,14 @@ for indice, d in enumerate(dias):
                 )
 
 # restr 20
-for m in medicamentos:
-    for indice, d in enumerate(dias[:len(dias) - params['dur med'][m]]):
-        model.addConstr(
-            almacen_bodega[m][d] + quicksum(almacen_centro[m][b][d] for b in centros)
-            <= quicksum(quicksum(params['demandas'][b][m][i] for b in centros) \
-                for i in dias[indice: indice + params['dur med'][m]]),
-                f'restr20_{m}_{d}'
-        )
+# for m in medicamentos:
+#     for indice, d in enumerate(dias[:len(dias) - params['dur med'][m]]):
+#         model.addConstr(
+#             almacen_bodega[m][d] + quicksum(almacen_centro[m][b][d] for b in centros)
+#             <= quicksum(quicksum(params['demandas'][b][m][i] for b in centros) \
+#                 for i in dias[indice: indice + params['dur med'][m]]),
+#                 f'restr20_{m}_{d}'
+#         )
 
 # restr 21
 for m in medicamentos:
@@ -371,12 +371,35 @@ for d in dias:
                     model.addConstr(entre_centro[c][b][a][d] == 0,
                     f'rest_extra_{b}_{a}_{c}_{d}')
 
+# Natur var
+for m in medicamentos:
+    for p in productores:
+        for c in cam_por_prod[p]:
+            for d in dias:
+                model.addConstr(
+                    med_trans_prod[m][p][c][d] >= 0, f'natur_var_X{m}_{p}_{c}_{d}'
+                )
+model.addConstr(arrienda >= 0, f'natur_var_Beta')
+for m in medicamentos:
+    for b in centros:
+        for d in dias:
+            for c in cam_CENABAST:
+                model.addConstr(
+                    med_bodega_centro[m][c][b][d] >= 0, f'natur_var_r_{m}_{c}_{b}_{d}'
+                )
+
 #-----------------------------------------------------------------------------
 model.update()
-print('Modelo version 1.0')
+
+# Time limit, para testeo
+# Solo me importa que no sea infactible
+model.setParam(GRB.Param.TimeLimit, 50)
+
+print('Modelo version 1.03')
 model.optimize()
 
-model.printAttr("X")
+
+#model.printAttr("X")
 
 print('\n------------------------------------------------------------\n')
 #for constr in model.getConstrs():

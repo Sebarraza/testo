@@ -1,7 +1,7 @@
 Conjuntos;Sigla;N
-n medicamentos;M;6
-cam prod;Cp;1
-cam CENABAST;Cd;2
-n centros;C;8
+n medicamentos;M;5
+cam prod;Cp;3
+cam CENABAST;Cd;5
+n centros;C;5
 n dias;D;20
 n prod;P;3
