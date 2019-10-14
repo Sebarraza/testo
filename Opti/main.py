@@ -37,18 +37,18 @@ for p in productores:
         cam_a_bodega[p][c] = {}
         for d in dias:
             cam_a_bodega[p][c][d] = model.addVar(vtype= GRB.BINARY, name=f'a_bodega_{p}_{c}_{d}')
-# Z: Unidades vencidas del medicamento m el dia d
+# Z: Llega a bodega el medicamento m el dia d
 # W: Unidades almacenadas de med m en bodega el dia d
-#vencidos = {} # DELETE
+llega_a_bodega = {}
 almacen_bodega = {}
 for m in medicamentos:
-    #vencidos[m] = {} # DELETE
+    llega_a_bodega[m] = {}
     almacen_bodega[m] = {}
     for d in dias:
-        #vencidos[m][d] = model.addVar(vtype= GRB.CONTINUOUS, name=f'vencidos_{m}_{d}') # DELETE
+        llega_a_bodega[m][d] = model.addVar(vtype= GRB.BINARY, name=f'llega_bodega_{m}_{d}')
         almacen_bodega[m][d] = model.addVar(vtype= GRB.CONTINUOUS, name=f'almacen_bodega_{m}_{d}')
 # Beta: N Bodegas a arrendar
-arrienda = model.addVar(vtype= GRB.CONTINUOUS, name='bodegas a arrendar')
+arrienda = model.addVar(vtype= GRB.INTEGER, name='bodegas a arrendar')
 
 # r: med transportado de bodega al centro b el dia d
 med_bodega_centro = {}
@@ -227,7 +227,7 @@ for indice, d in enumerate(dias):
                     quicksum(med_bodega_centro[m][c][b][d] + 
                     quicksum(trans_entre_centro[m][c][b][a][d] - trans_entre_centro[m][c][a][b][d] for a in centros) -
                     trans_centro_bodega[m][c][b][d] for c in cam_CENABAST) - 
-                    params['demandas'][b][m][d], f'restr09_{m}_{b}_{d}'
+                    params['demandas'][m][d][b], f'restr09_{m}_{b}_{d}'
                 )
             elif indice == len(dias) - 1:
                 model.addConstr(
@@ -240,7 +240,7 @@ for indice, d in enumerate(dias):
                     quicksum(med_bodega_centro[m][c][b][d] + 
                     quicksum(trans_entre_centro[m][c][b][a][d] - trans_entre_centro[m][c][a][b][d] for a in centros) -
                     trans_centro_bodega[m][c][b][d] for c in cam_CENABAST) - 
-                    params['demandas'][b][m][d], f'restr09_{m}_{b}_{d}'
+                    params['demandas'][m][d][b], f'restr09_{m}_{b}_{d}'
                 )
 
 # restr 10
@@ -323,32 +323,32 @@ for indice, d in enumerate(dias):
         for m in medicamentos:
             if indice == 0:
                 model.addConstr(
-                    params['inicial centro'][m][b] >= params['demandas'][b][m][d],
+                    params['inicial centro'][m][b] >= params['demandas'][m][d][b],
                     f'restr19_{m}_{b}_{d}'
                 )
             else:
                 anterior = dias[indice - 1]
                 model.addConstr(
-                    almacen_centro[m][b][anterior] >= params['demandas'][b][m][d],
+                    almacen_centro[m][b][anterior] >= params['demandas'][m][d][b],
                     f'restr19_{m}_{b}_{d}'
                 )
 
 # restr 20
-# for m in medicamentos:
-#     for indice, d in enumerate(dias[:len(dias) - params['dur med'][m]]):
-#         model.addConstr(
-#             almacen_bodega[m][d] + quicksum(almacen_centro[m][b][d] for b in centros)
-#             <= quicksum(quicksum(params['demandas'][b][m][i] for b in centros) \
-#                 for i in dias[indice: indice + params['dur med'][m]]),
-#                 f'restr20_{m}_{d}'
-#         )
+for m in medicamentos:
+    for indice, d in enumerate(dias[:len(dias) - params['dur med'][m]]):
+        model.addConstr(
+            almacen_bodega[m][d] + quicksum(almacen_centro[m][b][d] for b in centros)
+            <= quicksum(quicksum(params['demandas'][m][i][b] for b in centros) \
+                for i in dias[indice: indice + params['dur med'][m]]),
+                f'restr20_{m}_{d}'
+        )
 
 # restr 21
 for m in medicamentos:
     for indice, d in enumerate(dias[:len(dias) - params['dur med'][m]]):
         for b in centros:
             model.addConstr(
-                almacen_centro[m][b][d] <= quicksum(params['demandas'][b][m][i] \
+                almacen_centro[m][b][d] <= quicksum(params['demandas'][m][d][b] \
                     for i in dias[indice+1: indice + params['dur med'][m]]),
                     f'restr21_{b}_{m}_{d}'
             )
@@ -361,6 +361,80 @@ for p in productores:
                 for i in dias[indice : indice + params['prod cd'][p]])
             == 1, f'restr22_{p}_{d}'
         )
+
+# restricciones nuevas
+# restr 3: Vol minimo para transporte
+for d in dias:
+    for p in productores:
+        model.addConstr(
+            quicksum(quicksum(med_trans_prod[m][p][c][d] * params['vol med'][m]
+            for c in cam_por_prod[p]) for m in med_prod[p]) <= quicksum(
+            cam_a_bodega[p][c][d] * params['min prod'][p] for c in cam_por_prod[p]),
+            f'restr3N_{p}_{d}'
+        )
+
+# restr 24: Activacion var Z
+# restr 25: Dia que llega el med a la bodega, esta no debe tener ese med
+for indice, d in enumerate(dias):
+    for m in medicamentos:
+        # restr 24
+        model.addConstr(
+            quicksum(quicksum(med_trans_prod[m][p][c][d] for c in cam_por_prod[p]) for p in productores)
+            <= llega_a_bodega[m][d] * params['M GRANDE'], f'restr24_{m}_{d}'
+        )
+        # restr 25
+        if indice == 0:
+            model.addConstr(
+                params['inicial bodega'][m] <= (1 - llega_a_bodega[m][d]) * params['M GRANDE'],
+                f'restr25_{m}_{d}'
+            )
+        else:
+            anterior = dias[indice - 1]
+            model.addConstr(
+                almacen_bodega[m][anterior] <=
+                (1 - llega_a_bodega[m][d]) * params['M GRANDE'], f'restr25_{m}_{d}'
+            )
+
+# restr 26: Cantidad de un medicamento no mayor que su demanda en el centro
+for indice, d in enumerate(dias):
+    for m in medicamentos:
+        for indece2, l in enumerate(dias[:len(dias) - params['dur med'][m]]):
+            if indece2 >= indice:
+                continue
+            for b in centros:
+                anterior = dias[indice-1]
+                model.addConstr(
+                    almacen_centro[m][b][anterior] - (1 - llega_a_bodega[m][l]) * params['M GRANDE']
+                    <= (llega_a_bodega[m][d] * quicksum(params['demandas'][m][i][b] 
+                    for i in dias[indice: indece2 + params['dur med'][m]])) + 
+                    ((1-llega_a_bodega[m][d]) * params['M GRANDE']) + (params['M GRANDE'] * 
+                    quicksum(llega_a_bodega[m][i] for i in dias[indece2+1:indice-1])), f'restr26_{b}_{m}_l:{l}_{d}'
+                )
+
+# restr 27: Mov entre centros tras llegada de med
+for m in medicamentos:
+    for indice, d in enumerate(dias[:len(dias)-params['dur med'][m]]):
+        for indece2, l in enumerate(dias[:len(dias)-params['dur med'][m]]):
+            if indece2 >= indice:
+                continue
+            for b in centros:
+                for indeca3, a in enumerate(dias[indice+1: min((len(dias), indece2+params['dur med'][m]))]):
+                    if indice == 0:
+                        model.addConstr(
+                            almacen_centro[m][b][a] >= params['inicial centro'][m][b] - 
+                            quicksum(params['demandas'][m][i][b] for i in dias[indice:indeca3]) -
+                            (params['M GRANDE'] * (1-llega_a_bodega[m][d])) - 
+                            (params['M GRANDE'] * (1-llega_a_bodega[m][l])), f'restr27_{b}_{m}_a:{a}_l:{l}_{d}'
+                        )
+                    else:
+                        antedia = dias[indice-1]
+                        model.addConstr(
+                            almacen_centro[m][b][a] >= almacen_centro[m][b][antedia] - 
+                            quicksum(params['demandas'][m][i][b] for i in dias[indice:indeca3]) -
+                            (params['M GRANDE'] * (1-llega_a_bodega[m][d])) - 
+                            (params['M GRANDE'] * (1-llega_a_bodega[m][l])), f'restr27_{b}_{m}_a:{a}_l:{l}_{d}'
+                        )
+
 
 # restr extra para evitar transportes de un centro al mismo
 for d in dias:
@@ -393,13 +467,13 @@ model.update()
 
 # Time limit, para testeo
 # Solo me importa que no sea infactible
-model.setParam(GRB.Param.TimeLimit, 50)
-
-print('Modelo version 1.03')
+model.setParam(GRB.Param.TimeLimit, 5)
 model.optimize()
 
 
 #model.printAttr("X")
+
+print(f'Cantidad de bodegas: {arrienda.X}')
 
 print('\n------------------------------------------------------------\n')
 #for constr in model.getConstrs():

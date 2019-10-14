@@ -3,6 +3,8 @@ Conjuntos y parametros para el modelo
 '''
 
 from random import choice, randint
+from collections import defaultdict
+from pandas import DataFrame, read_excel
 
 def carga_datos(nombre = ''):
     temp = []
@@ -18,13 +20,11 @@ def carga_datos(nombre = ''):
 
 def Conjuntos():
     # Tamanos primero
-    CONJ = {
-        'rango medic prod': (7, 11),
-    }
+    CONJ = {}
 
-    arreglo = carga_datos(nombre='size_conjuntos.csv')
+    arreglo = carga_datos(nombre='csvs/size_conjuntos.csv')
     for fila in arreglo:
-        if fila[0] == 'Conjuntos':
+        if fila[0] == 'conjuntos':
             continue
         else:
             CONJ[fila[0]] = int(fila[2])
@@ -76,7 +76,7 @@ def Conjuntos():
 # PARAMETROS
 
 def Parametros(productores = [], medicamentos = [], centros = [], dias= []):
-    arreglo = carga_datos('constantes.csv')
+    arreglo = carga_datos('csvs/constantes.csv')
     for fila in arreglo:
         nombre, valor = (fila[0], fila[2])
         if nombre == 'Nombre':
@@ -95,7 +95,7 @@ def Parametros(productores = [], medicamentos = [], centros = [], dias= []):
     dur_med = {}
     # Costo var del camion por productor
     costo_trans_medic_bodega = {}
-    arreglo = carga_datos('medicamentos.csv')
+    arreglo = carga_datos('csvs/medicamentos.csv')
     for fila in arreglo:
         nombre, valores = (fila[0], fila[1:])
         if nombre == 'Nombre':
@@ -120,11 +120,10 @@ def Parametros(productores = [], medicamentos = [], centros = [], dias= []):
     # Bodega a centro
     costo_tran_bod_centro = {}
     tiempo_tran_bod_centro = {}
-    vol_almacen_centro = {}
     # Inter centros
     tiempo_entre_centros = {}
     costo_entre_centros = {}
-    arreglo = carga_datos('tiempo y costo por centro.csv')
+    arreglo = carga_datos('csvs/tiempo y costo por centro.csv')
     for fila in arreglo:
         tipo, origen, valores = (fila[0], fila[1], tuple(fila[2:]))
         if tipo == 'tipo':
@@ -151,7 +150,7 @@ def Parametros(productores = [], medicamentos = [], centros = [], dias= []):
                     if ',' in costo:
                         u,d = costo.split(',')
                         costo= '.'.join((u,d))
-                    costo_tran_bod_centro[centro] = int(costo)
+                    costo_tran_bod_centro[centro] = float(costo)
             elif 'centro' in origen:
                 costo_entre_centros[origen] = {}
                 for centro, costo in zip(centros, valores):
@@ -160,33 +159,43 @@ def Parametros(productores = [], medicamentos = [], centros = [], dias= []):
                         costo= '.'.join((u,d))
                     if centro == origen:
                         costo = '0'
-                    costo_entre_centros[origen][centro] = int(costo)
-        elif tipo == 'volumen':
-            for centro, vol in zip(centros, valores):
-                if ',' in vol:
-                    u,d = vol.split(',')
-                    vol= '.'.join((u,d))
-                vol_almacen_centro[centro] = int(vol)
+                    costo_entre_centros[origen][centro] = float(costo)
 
     # Demanda:
     # Este es muy denso como para hacerlo asi, probablemente va a tener que hacerse
     # un archivo a lo txt o csv con estos datos
     # SPOILER: el csv que me pasaron era exactamente esto, asique lo dejo asi
     demanda = {}
-    for b in centros:
-        demanda[b] = {}
-        for m in medicamentos:
-            demanda[b][m] = {}
-            for d in dias:
-                temp = randint(50,100)
-                demanda[b][m][d] = temp
+    temp = defaultdict(list)
+    arreglo = carga_datos('csvs/demandas.csv')
+    for fila in arreglo:
+        med, dia, valores= (fila[0], fila[1], fila[2:])
+        if med == 'med':
+            continue
+        s = med.strip('med')
+        med = 'medicamento'+s
+        t = []
+        t.append(dia)
+        t.extend(valores)
+        temp[med].append(t)
+        
+    for key, value in temp.items():
+        demanda[key] = {}
+        for indice, d in enumerate(dias):
+            demanda[key][d] = {}
+            valores = value[indice][1:]
+            for b, valor in zip(centros, valores):
+                demanda[key][d][b] = int(valor)
+
 
     costo_fijo_cam = {}
     vol_cam = {}
-    arreglo = carga_datos('vol y costo fijo por prod.csv')
+    min_prod = {}
+    cd_prod = {}
+    arreglo = carga_datos('csvs/vol y costo fijo por prod.csv')
     for fila in arreglo:
         nombre, valores = (fila[0], fila[2:])
-        if nombre == 'Nombre':
+        if nombre == 'nombres':
             continue
         elif nombre == 'vol camion':
             for p, vol in zip(productores, valores):
@@ -194,7 +203,14 @@ def Parametros(productores = [], medicamentos = [], centros = [], dias= []):
         elif nombre == 'costo fijo':
             for p, costo in zip(productores, valores):
                 costo_fijo_cam[p] = int(costo)
+        elif nombre == 'vol min':
+            for p, vol in zip(productores, valores):
+                min_prod[p] = int(vol)
+        elif nombre == 'cd prod':
+            for p, cd in zip(productores, valores):
+                cd_prod[p] = int(cd)
 
+    # Conjunto de medicamentos por productor
     med_prod = {}
     for p in productores:
         medics = costo_trans_medic_bodega[p]
@@ -206,16 +222,25 @@ def Parametros(productores = [], medicamentos = [], centros = [], dias= []):
                 med_prod[p].append(m)
 
     inicial_bodega = {}
-    inicial_centro = {}
-    for m in medicamentos:
-        inicial_bodega[m] = randint(50, 100)
-        inicial_centro[m] = {}
-        for b in centros:
-            inicial_centro[m][b] = 1000
+    inicial_centro = defaultdict(dict)
+    arreglo = carga_datos('csvs/inv inicial.csv')
+    for fila in arreglo:
+        medi, lugar, valor = tuple(fila)
+        if medi == 'med':
+            continue
+        if lugar == 'bodega':
+            inicial_bodega[medi] = int(valor)
+        elif 'centro' in lugar:
+            inicial_centro[medi][lugar] = int(valor)
 
-    dias_no_prod = {}
-    for p in productores:
-        dias_no_prod[p] = 1
+    vol_almacen_centro = {}
+    arreglo = carga_datos('csvs/vol centros.csv')
+    for fila in arreglo:
+        centro, vol = tuple(fila)
+        if centro == 'centro':
+            continue
+        vol_almacen_centro[centro] = int(vol)
+
 
     return {
         'demandas': demanda,
@@ -236,7 +261,8 @@ def Parametros(productores = [], medicamentos = [], centros = [], dias= []):
         'M GRANDE': 100200300400,
         'inicial centro': inicial_centro,
         'inicial bodega': inicial_bodega,
-        'prod cd': dias_no_prod
+        'prod cd': cd_prod,
+        'min prod': min_prod
     }, med_prod
 
 if __name__ == "__main__":

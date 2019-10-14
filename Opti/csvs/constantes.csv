@@ -1,0 +1,5 @@
+Nombre;Letra;Valor
+capacidad camion CENABAST;jc;30000
+costo arriendo bodega;c;20000
+vol por bodega;g;200000
+tiempo de trabajo del camion;t;8
